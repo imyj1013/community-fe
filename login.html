@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>로그인 - 잡담방</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="login">
+    <div class="app-wrapper">
+      <header class="app-header">
+        <div class="app-header-title">잡담방</div>
+      </header>
+
+      <main class="app-main">
+        <section class="card">
+          <h1 class="card-title">로그인</h1>
+
+          <div class="form-group">
+            <label class="form-label" for="login-email">이메일</label>
+            <input
+              id="login-email"
+              type="email"
+              class="form-input"
+              placeholder="이메일을 입력하세요"
+            />
+            <div
+              id="login-email-helper"
+              class="helper-text helper-error"
+            ></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="login-password">비밀번호</label>
+            <input
+              id="login-password"
+              type="password"
+              class="form-input"
+              placeholder="비밀번호를 입력하세요"
+            />
+            <div
+              id="login-password-helper"
+              class="helper-text helper-error"
+            ></div>
+          </div>
+
+          <button
+            id="login-btn"
+            class="btn btn-primary"
+            disabled
+          >
+            로그인
+          </button>
+
+          <div
+            id="login-form-helper"
+            class="helper-text helper-error"
+            style="text-align: center; margin-top: 8px"
+          ></div>
+
+          <div class="link-row">
+            <button
+              id="go-signup-btn"
+              type="button"
+              class="btn btn-text"
+            >
+              회원가입
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>게시글 목록 - 잡담방</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="posts">
+    <div class="app-wrapper">
+      <header class="app-header">
+        <div class="app-header-title">잡담방</div>
+        <div class="header-right">
+          <div class="header-profile">
+            <button
+              id="header-profile-btn"
+              type="button"
+              class="header-profile-btn"
+            >
+              <!-- JS에서 이미지/이니셜 채움 -->
+            </button>
+            <div
+              id="header-profile-menu"
+              class="header-profile-menu hidden"
+            >
+              <button
+                type="button"
+                data-action="edit-profile"
+              >
+                회원정보수정
+              </button>
+              <button
+                type="button"
+                data-action="edit-password"
+              >
+                비밀번호수정
+              </button>
+              <button type="button" data-action="logout">
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="posts-container">
+
+          <div class="posts-greeting">
+            자유롭게 글을 올리고 의견을 나눌 수 있는 곳입니다. 
+          </div>
+          <div class="posts-header-row">
+            <div></div>
+            <button
+              id="btn-write"
+              type="button"
+              class="btn-write"
+            >
+              게시글 작성
+            </button>
+          </div>
+
+          <div id="posts-list" class="posts-list"></div>
+          <div
+            id="posts-loading"
+            class="posts-loading"
+          ></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+<!-- post_edit.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>게시글 수정 - 잡담방</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="post-edit">
+  <div class="app-wrapper">
+    <header class="app-header">
+      <div class="header-left">
+        <button class="header-back-btn" id="edit-back-btn">&lt;</button>
+      </div>
+      <div class="app-header-title">잡담방</div>
+    </header>
+
+    <main class="app-main">
+      <section class="post-form-card">
+        <h1 class="post-form-title">게시글 수정</h1>
+
+        <!-- 제목 -->
+        <div class="form-group">
+          <label for="edit-title" class="form-label">
+            제목<span class="required">*</span>
+          </label>
+          <input
+            id="edit-title"
+            type="text"
+            class="form-input"
+            placeholder="제목을 입력해주세요. (최대 26글자)"
+            maxlength="26"
+          />
+        </div>
+
+        <!-- 내용 -->
+        <div class="form-group">
+          <label for="edit-content" class="form-label">
+            내용<span class="required">*</span>
+          </label>
+          <textarea
+            id="edit-content"
+            class="form-textarea"
+            placeholder="내용을 입력해주세요."
+          ></textarea>
+        </div>
+
+        <p id="edit-main-helper" class="helper-text">
+          제목, 내용을 모두 작성해주세요.
+        </p>
+
+        <div class="post-edit-image-area">
+        <!-- 기존 이미지가 있을 때만 보이는 영역 -->
+        <div id="current-image-row" style="display:none; align-items:center; gap:8px;">
+          <button id="delete-image-btn" type="button">이미지 삭제</button>
+          <span id="current-image-label" class="helper-text">현재 등록된 이미지</span>
+        </div>
+
+        <!-- 파일 선택 버튼 영역 (이미지 없을 때만 보이게 할 예정) -->
+        <div id="edit-image-file-row">
+          <input type="file" id="edit-image-input" accept="image/*" />
+        </div>
+
+        <p id="edit-image-helper" class="helper-text">파일을 선택해주세요.</p>
+        </div>
+
+        <!-- 수정 버튼 -->
+        <button id="edit-submit-btn" class="submit-btn">수정하기</button>
+      </section>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

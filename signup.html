@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>회원가입 - 잡담방</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="signup">
+    <div class="app-wrapper">
+      <header class="app-header">
+        <button
+          id="signup-back-btn"
+          class="header-back-btn"
+          type="button"
+        >
+          &lt;
+        </button>
+        <div class="app-header-title">잡담방</div>
+      </header>
+
+      <main class="app-main">
+        <section class="card">
+          <h1 class="card-title">회원가입</h1>
+
+          <!-- 프로필 이미지 -->
+          <div class="profile-wrapper">
+            <div id="profile-circle" class="profile-circle">
+              <span>+</span>
+            </div>
+            <input
+              id="profile-file-input"
+              type="file"
+              accept="image/*"
+              style="display: none"
+            />
+            <div
+              id="profile-helper"
+              class="helper-text helper-error profile-helper"
+            >
+              프로필 사진을 추가하세요.
+            </div>
+          </div>
+
+          <!-- 이메일 -->
+          <div class="form-group">
+            <label class="form-label" for="signup-email"
+              >이메일*</label
+            >
+            <input
+              id="signup-email"
+              type="email"
+              class="form-input"
+              placeholder="이메일을 입력하세요"
+            />
+            <div
+              id="signup-email-helper"
+              class="helper-text"
+            ></div>
+          </div>
+
+          <!-- 비밀번호 -->
+          <div class="form-group">
+            <label class="form-label" for="signup-password"
+              >비밀번호*</label
+            >
+            <input
+              id="signup-password"
+              type="password"
+              class="form-input"
+              placeholder="비밀번호를 입력하세요"
+            />
+            <div
+              id="signup-password-helper"
+              class="helper-text helper-error"
+            ></div>
+          </div>
+
+          <!-- 비밀번호 확인 -->
+          <div class="form-group">
+            <label
+              class="form-label"
+              for="signup-password-confirm"
+              >비밀번호 확인*</label
+            >
+            <input
+              id="signup-password-confirm"
+              type="password"
+              class="form-input"
+              placeholder="비밀번호를 한 번 더 입력하세요"
+            />
+            <div
+              id="signup-password-confirm-helper"
+              class="helper-text helper-error"
+            ></div>
+          </div>
+
+          <!-- 닉네임 -->
+          <div class="form-group">
+            <label class="form-label" for="signup-nickname"
+              >닉네임*</label
+            >
+            <input
+              id="signup-nickname"
+              type="text"
+              class="form-input"
+              placeholder="닉네임을 입력하세요"
+            />
+            <div
+              id="signup-nickname-helper"
+              class="helper-text"
+            ></div>
+          </div>
+
+          <button
+            id="signup-btn"
+            class="btn btn-primary"
+            disabled
+          >
+            회원가입
+          </button>
+
+          <div class="link-row">
+            <button
+              id="signup-go-login-btn"
+              type="button"
+              class="btn btn-text"
+            >
+              로그인하러 가기
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>게시글 상세 - 잡담방</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="post-detail">
+  <div class="app-wrapper">
+    <header class="app-header">
+      <div class="header-left">
+        <button class="header-back-btn" id="detail-back-btn">&lt;</button>
+      </div>
+      <div class="app-header-title">잡담방</div>
+    </header>
+
+    <main class="app-main">
+      <article class="post-detail-card">
+        <header class="post-detail-header">
+          <div>
+            <h1 id="detail-title" class="post-title">제목</h1>
+            <p class="post-meta">
+              <span id="detail-author">작성자</span> ·
+              <span id="detail-date">2023-11-03 10:00:00</span>
+            </p>
+          </div>
+          <div class="post-actions" id="post-owner-actions" style="display:none;">
+            <button class="btn-secondary" id="post-edit-btn">수정</button>
+            <button class="btn-secondary" id="post-delete-btn">삭제</button>
+          </div>
+        </header>
+
+        <div class="post-image-wrapper" id="detail-image-wrapper" style="display:none;">
+          <img id="detail-image" src="" alt="게시글 이미지" />
+        </div>
+
+        <div id="detail-content" class="post-content"></div>
+
+        <section class="post-stats-row">
+          <div class="stat-pill like-pill" id="like-pill">
+            <strong id="like-count">0</strong>
+            좋아요수
+          </div>
+          <div class="stat-pill">
+            <strong id="view-count">0</strong>
+            조회수
+          </div>
+          <div class="stat-pill">
+            <strong id="comment-count">0</strong>
+            댓글
+          </div>
+        </section>
+
+        <!-- 댓글 입력 -->
+        <section class="comment-form">
+          <textarea
+            id="comment-textarea"
+            class="comment-textarea"
+            placeholder="댓글을 남겨주세요!"
+          ></textarea>
+          <div class="comment-actions">
+            <button id="comment-submit-btn" class="comment-submit-btn">
+              댓글 등록
+            </button>
+          </div>
+        </section>
+
+        <!-- 댓글 목록 -->
+        <section class="comments-list" id="comments-list">
+          <!-- JS로 채움 -->
+        </section>
+      </article>
+    </main>
+  </div>
+
+  <!-- 게시글 삭제 모달 -->
+  <div class="modal-backdrop" id="post-delete-modal">
+    <div class="modal-card">
+      <div class="modal-title">게시글을 삭제하시겠습니까?</div>
+      <div class="modal-desc">삭제한 내용은 복구할 수 없습니다.</div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="post-delete-cancel">취소</button>
+        <button class="btn-confirm" id="post-delete-confirm">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 댓글 삭제 모달 -->
+  <div class="modal-backdrop" id="comment-delete-modal">
+    <div class="modal-card">
+      <div class="modal-title">댓글을 삭제하시겠습니까?</div>
+      <div class="modal-desc">삭제한 댓글은 복구할 수 없습니다.</div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="comment-delete-cancel">취소</button>
+        <button class="btn-confirm" id="comment-delete-confirm">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

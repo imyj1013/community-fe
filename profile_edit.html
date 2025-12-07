@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>회원정보수정 - 잡담방</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="profile-edit">
+    <div class="app-wrapper">
+      <header class="app-header">
+        <div class="app-header-title">잡담방</div>
+        <div class="header-right">
+          <div class="header-profile">
+            <button
+              id="header-profile-btn"
+              type="button"
+              class="header-profile-btn"
+            ></button>
+            <div
+              id="header-profile-menu"
+              class="header-profile-menu hidden"
+            >
+              <button
+                type="button"
+                data-action="edit-profile"
+              >
+                회원정보수정
+              </button>
+              <button
+                type="button"
+                data-action="edit-password"
+              >
+                비밀번호수정
+              </button>
+              <button type="button" data-action="logout">
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="card">
+          <h1 class="card-title">회원정보수정</h1>
+
+          <div class="profile-wrapper">
+            <div id="profile-circle" class="profile-circle">
+              <span>+</span>
+            </div>
+            <input
+              id="profile-file-input"
+              type="file"
+              accept="image/*"
+              style="display: none"
+            />
+            <div
+              id="profile-helper"
+              class="helper-text profile-helper helper-error"
+            >
+              프로필 사진을 추가하세요.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="profile-email"
+              >이메일</label
+            >
+            <input
+              id="profile-email"
+              type="email"
+              class="form-input"
+              disabled
+            />
+          </div>
+
+          <div class="form-group">
+            <label
+              class="form-label"
+              for="profile-nickname"
+              >닉네임</label
+            >
+            <input
+              id="profile-nickname"
+              type="text"
+              class="form-input"
+              placeholder="닉네임을 입력하세요"
+            />
+            <div
+              id="profile-nickname-helper"
+              class="helper-text"
+            ></div>
+          </div>
+
+          <button
+            id="profile-update-btn"
+            class="btn btn-primary"
+            disabled
+          >
+            개인정보 수정하기
+          </button>
+
+          <div class="link-row" style="margin-top: 16px">
+            <button
+              id="btn-delete-user"
+              type="button"
+              class="btn-text"
+            >
+              회원 탈퇴
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <!-- 수정완료 토스트 -->
+      <div id="toast" class="toast hidden">
+        <span>수정이 완료되었습니다.</span>
+        <button
+          id="toast-confirm-btn"
+          type="button"
+        >
+          수정완료
+        </button>
+      </div>
+
+      <!-- 회원탈퇴 모달 -->
+      <div
+        id="delete-modal-backdrop"
+        class="modal-backdrop hidden"
+      >
+        <div class="modal">
+          <div class="modal-title">
+            회원탈퇴 하시겠습니까?
+          </div>
+          <div class="modal-body">
+            작성된 게시글과 댓글은 삭제됩니다.
+          </div>
+          <div class="modal-actions">
+            <button
+              id="modal-btn-cancel"
+              type="button"
+              class="modal-btn-cancel"
+            >
+              취소
+            </button>
+            <button
+              id="modal-btn-confirm"
+              type="button"
+              class="modal-btn-confirm"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>
