@@ -1,20 +1,44 @@
 const API_BASE_URL = "http://localhost:8000";
 const USER_KEY = "amumal-user";
 
-// ---------- 공통 유틸 ----------
+/* ================== 공통 유틸 ================== */
 
-function isValidEmail(email) {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
+// fetch + JSON 공통 래퍼
+async function apiRequest(method, path, { body, query } = {}) {
+  const url = new URL(API_BASE_URL + path);
+  if (query) {
+    Object.entries(query).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) url.searchParams.set(k, v);
+    });
+  }
+
+  const res = await fetch(url.toString(), {
+    method,
+    credentials: "include",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    // body 없는 응답도 있을 수 있음
+  }
+  return { res, data };
 }
 
-function isValidPassword(pwd) {
-  // 8~20, 대문자/소문자/숫자/특수문자 최소 1개씩
-  const re =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,20}$/;
-  return re.test(pwd);
-}
+const apiGet = (path, opts) => apiRequest("GET", path, opts || {});
+const apiPost = (path, body, opts) =>
+  apiRequest("POST", path, { ...(opts || {}), body });
+const apiPut = (path, body, opts) =>
+  apiRequest("PUT", path, { ...(opts || {}), body });
+const apiDelete = (path, opts) => apiRequest("DELETE", path, opts || {});
 
+// 유효성 검사
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const isValidPassword = (pwd) =>
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,20}$/.test(pwd);
 function isValidNickname(nickname) {
   if (!nickname) return false;
   if (nickname.length > 10) return false;
@@ -22,17 +46,15 @@ function isValidNickname(nickname) {
   return true;
 }
 
+// 버튼 활성/비활성
 function setButtonActive(button, active) {
   if (!button) return;
-  if (active) {
-    button.classList.add("active");
-    button.disabled = false;
-  } else {
-    button.classList.remove("active");
-    button.disabled = true;
-  }
+  button.disabled = !active;
+  if (active) button.classList.add("active");
+  else button.classList.remove("active");
 }
 
+// helper 텍스트
 function setHelper(el, message, type) {
   if (!el) return;
   el.textContent = message || "";
@@ -49,22 +71,16 @@ function formatCount(value) {
     else return value;
   }
   if (typeof value !== "number") return String(value);
-
   if (value >= 100000) return "100k";
   if (value >= 10000) return "10k";
-  if (value >= 1000) {
-    return Math.round(value / 1000) + "k";
-  }
+  if (value >= 1000) return Math.round(value / 1000) + "k";
   return String(value);
 }
 
 // 제목 26자 제한
-function truncateTitle(title) {
-  if (!title) return "";
-  return title.slice(0, 26);
-}
+const truncateTitle = (title) => (title ? title.slice(0, 26) : "");
 
-// 세션 저장/조회
+// 세션
 function saveUserSession(apiData, email) {
   const user = {
     user_id: apiData.user_id,
@@ -85,11 +101,9 @@ function getUserSession() {
   }
 }
 
-function clearUserSession() {
-  localStorage.removeItem(USER_KEY);
-}
+const clearUserSession = () => localStorage.removeItem(USER_KEY);
 
-// 인증이 필요한 페이지 공통 초기화
+// 인증 필요한 페이지 공통
 function initAuthedPage() {
   const user = getUserSession();
   if (!user) {
@@ -100,77 +114,58 @@ function initAuthedPage() {
   return user;
 }
 
-// 쿼리 파라미터 읽기 (?postId=1)
+// 쿼리 파라미터
 function getQueryParam(name) {
   const url = new URL(window.location.href);
   return url.searchParams.get(name);
 }
 
-// ---------- 헤더 프로필/로그아웃 ----------
+/* ================== 공통 컴포넌트 ================== */
 
+// 헤더 프로필/로그아웃
 function initHeaderWithProfile(user) {
-  const profileBtn = document.getElementById(
-    "header-profile-btn"
-  );
-  const profileMenu = document.getElementById(
-    "header-profile-menu"
-  );
+  const profileBtn = document.getElementById("header-profile-btn");
+  const profileMenu = document.getElementById("header-profile-menu");
   if (!profileBtn || !profileMenu) return;
 
-  // 이미지 or 이니셜
+  profileBtn.innerHTML = "";
   if (user.profile_image) {
     const img = document.createElement("img");
     img.src = user.profile_image;
-    profileBtn.innerHTML = "";
     profileBtn.appendChild(img);
   } else {
-    profileBtn.innerHTML = "";
     const span = document.createElement("span");
     span.className = "header-profile-initial";
-    span.textContent = user.nickname
-      ? user.nickname[0].toUpperCase()
-      : "U";
+    span.textContent = (user.nickname?.[0] || "U").toUpperCase();
     profileBtn.appendChild(span);
   }
 
-  const toggleMenu = () => {
-    profileMenu.classList.toggle("hidden");
-  };
+  const toggleMenu = () => profileMenu.classList.toggle("hidden");
 
   profileBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     toggleMenu();
   });
 
-  document.addEventListener("click", () => {
-    profileMenu.classList.add("hidden");
-  });
+  document.addEventListener("click", () =>
+    profileMenu.classList.add("hidden")
+  );
 
   profileMenu.addEventListener("click", (e) => {
     e.stopPropagation();
     const action = e.target.dataset.action;
     if (!action) return;
-
-    if (action === "edit-profile") {
-      window.location.href = "profile_edit.html";
-    } else if (action === "edit-password") {
+    if (action === "edit-profile") window.location.href = "profile_edit.html";
+    else if (action === "edit-password")
       window.location.href = "password_edit.html";
-    } else if (action === "logout") {
-      handleLogout(user);
-    }
+    else if (action === "logout") handleLogout(user);
   });
 }
 
 async function handleLogout(user) {
   if (!user) return;
   try {
-    await fetch(
-      `${API_BASE_URL}/user/logout/${user.user_id}`,
-      {
-        method: "DELETE",
-        credentials: "include",
-      }
-    );
+    await apiDelete(`/user/logout/${user.user_id}`);
   } catch (e) {
     console.error(e);
   } finally {
@@ -179,29 +174,135 @@ async function handleLogout(user) {
   }
 }
 
-// ---------- 로그인 페이지 ----------
+// 아바타 렌더 (목록/댓글 공통)
+function renderAvatar(container, imageUrl, nickname, initialClass) {
+  if (!container) return;
+  container.innerHTML = "";
+  if (imageUrl) {
+    const img = document.createElement("img");
+    img.src = imageUrl;
+    img.alt = nickname || "author";
+    container.appendChild(img);
+  } else {
+    const span = document.createElement("span");
+    span.className = initialClass;
+    span.textContent = (nickname?.[0] || "U").toUpperCase();
+    container.appendChild(span);
+  }
+}
+
+// 이미지 업로드 공통
+async function uploadImage(file, helperEl) {
+  if (!file) {
+    setHelper(helperEl, "파일을 선택해주세요.", "error");
+    return null;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  setHelper(helperEl, "이미지를 업로드 중입니다...", "");
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/image`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 201 && data.data?.file_path) {
+      setHelper(helperEl, "", "");
+      return data.data.file_path;
+    } else {
+      setHelper(helperEl, "이미지 업로드 중 오류가 발생했습니다.", "error");
+      return null;
+    }
+  } catch (err) {
+    console.error(err);
+    setHelper(helperEl, "이미지 업로드 중 오류가 발생했습니다.", "error");
+    return null;
+  }
+}
+
+// 닉네임 검증 + 중복 체크 공통
+function bindNicknameCheck({ input, helper, initialNickname, onStateChange }) {
+  let valid = true;
+  let available = true;
+
+  async function checkNickname() {
+    const value = input.value.trim();
+    available = false;
+
+    if (!value) {
+      valid = false;
+      setHelper(helper, "닉네임을 입력해주세요", "error");
+      onStateChange({ valid, available });
+      return;
+    }
+    if (!isValidNickname(value)) {
+      valid = false;
+      setHelper(helper, "10자 이내, 띄어쓰기 불가", "error");
+      onStateChange({ valid, available });
+      return;
+    }
+
+    valid = true;
+
+    // 기존 닉네임이면 중복 체크 스킵
+    if (initialNickname && value === initialNickname) {
+      available = true;
+      setHelper(helper, "", "");
+      onStateChange({ valid, available });
+      return;
+    }
+
+    try {
+      const { res, data } = await apiGet("/user/check-nickname", {
+        query: { nickname: value },
+      });
+
+      if (res.status === 200 && data.data) {
+        if (data.data.possible) {
+          available = true;
+          setHelper(helper, "사용가능한 닉네임입니다.", "success");
+        } else {
+          available = false;
+          setHelper(helper, "중복된 닉네임입니다.", "error");
+        }
+      } else if (res.status === 400) {
+        valid = false;
+        setHelper(helper, "10자 이내, 띄어쓰기 불가", "error");
+      } else {
+        available = false;
+        setHelper(helper, "닉네임 확인 중 오류가 발생했습니다.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      available = false;
+      setHelper(helper, "닉네임 확인 중 오류가 발생했습니다.", "error");
+    }
+
+    onStateChange({ valid, available });
+  }
+
+  input.addEventListener("blur", checkNickname);
+}
+
+/* ================== 로그인 페이지 ================== */
 
 function initLoginPage() {
   const emailInput = document.getElementById("login-email");
   const pwdInput = document.getElementById("login-password");
-  const emailHelper = document.getElementById(
-    "login-email-helper"
-  );
-  const pwdHelper = document.getElementById(
-    "login-password-helper"
-  );
-  const formHelper = document.getElementById(
-    "login-form-helper"
-  );
+  const emailHelper = document.getElementById("login-email-helper");
+  const pwdHelper = document.getElementById("login-password-helper");
+  const formHelper = document.getElementById("login-form-helper");
   const loginBtn = document.getElementById("login-btn");
   const signupBtn = document.getElementById("go-signup-btn");
 
   let emailValid = false;
   let pwdValid = false;
 
-  function updateLoginButton() {
-    setButtonActive(loginBtn, emailValid && pwdValid);
-  }
+  const updateBtn = () => setButtonActive(loginBtn, emailValid && pwdValid);
 
   emailInput.addEventListener("blur", () => {
     const value = emailInput.value.trim();
@@ -214,20 +315,16 @@ function initLoginPage() {
       );
     } else {
       emailValid = true;
-      setHelper(emailHelper, "");
+      setHelper(emailHelper, "", "");
     }
-    updateLoginButton();
+    updateBtn();
   });
 
   pwdInput.addEventListener("blur", () => {
     const value = pwdInput.value;
     if (!value) {
       pwdValid = false;
-      setHelper(
-        pwdHelper,
-        "비밀번호를 입력해주세요",
-        "error"
-      );
+      setHelper(pwdHelper, "비밀번호를 입력해주세요", "error");
     } else if (!isValidPassword(value)) {
       pwdValid = false;
       setHelper(
@@ -237,15 +334,15 @@ function initLoginPage() {
       );
     } else {
       pwdValid = true;
-      setHelper(pwdHelper, "");
+      setHelper(pwdHelper, "", "");
     }
-    updateLoginButton();
+    updateBtn();
   });
 
   [emailInput, pwdInput].forEach((el) =>
     el.addEventListener("input", () => {
-      updateLoginButton();
-      setHelper(formHelper, "");
+      setHelper(formHelper, "", "");
+      updateBtn();
     })
   );
 
@@ -259,36 +356,16 @@ function initLoginPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/user/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (res.status === 200) {
-        const data = await res.json();
-        if (data.detail === "login_success") {
-          saveUserSession(data.data, payload.email);
-          window.location.href = "posts.html";
-          return;
-        }
+      const { res, data } = await apiPost("/user/login", payload);
+      if (res.status === 200 && data.detail === "login_success") {
+        saveUserSession(data.data, payload.email);
+        window.location.href = "posts.html";
+        return;
       }
-
-      setHelper(
-        formHelper,
-        "아이디 또는 비밀번호를 확인해주세요",
-        "error"
-      );
+      setHelper(formHelper, "아이디 또는 비밀번호를 확인해주세요", "error");
     } catch (err) {
       console.error(err);
-      setHelper(
-        formHelper,
-        "아이디 또는 비밀번호를 확인해주세요",
-        "error"
-      );
+      setHelper(formHelper, "아이디 또는 비밀번호를 확인해주세요", "error");
     }
   });
 
@@ -297,49 +374,31 @@ function initLoginPage() {
   });
 }
 
-// ---------- 회원가입 페이지 ----------
+/* ================== 회원가입 페이지 ================== */
 
 function initSignupPage() {
   const backBtn = document.getElementById("signup-back-btn");
-  const toLoginBtn = document.getElementById(
-    "signup-go-login-btn"
-  );
+  const toLoginBtn = document.getElementById("signup-go-login-btn");
 
   const emailInput = document.getElementById("signup-email");
-  const emailHelper = document.getElementById(
-    "signup-email-helper"
-  );
+  const emailHelper = document.getElementById("signup-email-helper");
 
   const pwdInput = document.getElementById("signup-password");
-  const pwdHelper = document.getElementById(
-    "signup-password-helper"
-  );
+  const pwdHelper = document.getElementById("signup-password-helper");
 
-  const pwdConfirmInput = document.getElementById(
-    "signup-password-confirm"
-  );
+  const pwdConfirmInput = document.getElementById("signup-password-confirm");
   const pwdConfirmHelper = document.getElementById(
     "signup-password-confirm-helper"
   );
 
-  const nicknameInput = document.getElementById(
-    "signup-nickname"
-  );
-  const nicknameHelper = document.getElementById(
-    "signup-nickname-helper"
-  );
+  const nicknameInput = document.getElementById("signup-nickname");
+  const nicknameHelper = document.getElementById("signup-nickname-helper");
 
   const signupBtn = document.getElementById("signup-btn");
 
-  const profileCircle = document.getElementById(
-    "profile-circle"
-  );
-  const profileInput = document.getElementById(
-    "profile-file-input"
-  );
-  const profileHelper = document.getElementById(
-    "profile-helper"
-  );
+  const profileCircle = document.getElementById("profile-circle");
+  const profileInput = document.getElementById("profile-file-input");
+  const profileHelper = document.getElementById("profile-helper");
 
   let profileImagePath = null;
   let emailValid = false;
@@ -348,6 +407,10 @@ function initSignupPage() {
   let pwdConfirmValid = false;
   let nicknameValid = false;
   let nicknameAvailable = false;
+
+  const goLogin = () => (window.location.href = "login.html");
+  backBtn.addEventListener("click", goLogin);
+  toLoginBtn.addEventListener("click", goLogin);
 
   function updateSignupButton() {
     const canSubmit =
@@ -359,10 +422,6 @@ function initSignupPage() {
       nicknameAvailable;
     setButtonActive(signupBtn, canSubmit);
   }
-
-  const goLogin = () => (window.location.href = "login.html");
-  backBtn.addEventListener("click", goLogin);
-  toLoginBtn.addEventListener("click", goLogin);
 
   // 이메일
   emailInput.addEventListener("blur", async () => {
@@ -383,29 +442,17 @@ function initSignupPage() {
     emailValid = true;
 
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/user/check-email?email=${encodeURIComponent(
-          value
-        )}`,
-        { method: "GET", credentials: "include" }
-      );
+      const { res, data } = await apiGet("/user/check-email", {
+        query: { email: value },
+      });
 
-      if (res.status === 200) {
-        const data = await res.json();
-        if (data.data && data.data.possible) {
+      if (res.status === 200 && data.data) {
+        if (data.data.possible) {
           emailAvailable = true;
-          setHelper(
-            emailHelper,
-            "사용가능한 이메일입니다.",
-            "success"
-          );
+          setHelper(emailHelper, "사용가능한 이메일입니다.", "success");
         } else {
           emailAvailable = false;
-          setHelper(
-            emailHelper,
-            "중복된 이메일 입니다.",
-            "error"
-          );
+          setHelper(emailHelper, "중복된 이메일 입니다.", "error");
         }
       } else if (res.status === 400) {
         emailValid = false;
@@ -441,11 +488,7 @@ function initSignupPage() {
 
     if (!value) {
       pwdValid = false;
-      setHelper(
-        pwdHelper,
-        "비밀번호를 입력해주세요",
-        "error"
-      );
+      setHelper(pwdHelper, "비밀번호를 입력해주세요", "error");
     } else if (!isValidPassword(value)) {
       pwdValid = false;
       setHelper(
@@ -455,7 +498,7 @@ function initSignupPage() {
       );
     } else {
       pwdValid = true;
-      setHelper(pwdHelper, "");
+      setHelper(pwdHelper, "", "");
     }
 
     validatePasswordConfirm();
@@ -476,14 +519,10 @@ function initSignupPage() {
     }
     if (v !== pwdInput.value) {
       pwdConfirmValid = false;
-      setHelper(
-        pwdConfirmHelper,
-        "비밀번호가 다릅니다",
-        "error"
-      );
+      setHelper(pwdConfirmHelper, "비밀번호가 다릅니다", "error");
     } else {
       pwdConfirmValid = true;
-      setHelper(pwdConfirmHelper, "");
+      setHelper(pwdConfirmHelper, "", "");
     }
   }
 
@@ -492,100 +531,25 @@ function initSignupPage() {
     updateSignupButton();
   });
 
-  // 닉네임
-  nicknameInput.addEventListener("blur", async () => {
-    const value = nicknameInput.value.trim();
-    nicknameAvailable = false;
-
-    if (!value) {
-      nicknameValid = false;
-      setHelper(
-        nicknameHelper,
-        "닉네임을 입력해주세요",
-        "error"
-      );
+  // 닉네임 (공통 함수 사용)
+  bindNicknameCheck({
+    input: nicknameInput,
+    helper: nicknameHelper,
+    initialNickname: null,
+    onStateChange: ({ valid, available }) => {
+      nicknameValid = valid;
+      nicknameAvailable = available;
       updateSignupButton();
-      return;
-    }
-
-    if (!isValidNickname(value)) {
-      nicknameValid = false;
-      setHelper(
-        nicknameHelper,
-        "10자 이내, 띄어쓰기 불가",
-        "error"
-      );
-      updateSignupButton();
-      return;
-    }
-
-    nicknameValid = true;
-
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/user/check-nickname?nickname=${encodeURIComponent(
-          value
-        )}`,
-        { method: "GET", credentials: "include" }
-      );
-
-      if (res.status === 200) {
-        const data = await res.json();
-        if (data.data && data.data.possible) {
-          nicknameAvailable = true;
-          setHelper(
-            nicknameHelper,
-            "사용가능한 닉네임입니다.",
-            "success"
-          );
-        } else {
-          nicknameAvailable = false;
-          setHelper(
-            nicknameHelper,
-            "중복된 닉네임입니다.",
-            "error"
-          );
-        }
-      } else if (res.status === 400) {
-        nicknameValid = false;
-        setHelper(
-          nicknameHelper,
-          "10자 이내, 띄어쓰기 불가",
-          "error"
-        );
-      } else {
-        nicknameAvailable = false;
-        setHelper(
-          nicknameHelper,
-          "닉네임 확인 중 오류가 발생했습니다.",
-          "error"
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      nicknameAvailable = false;
-      setHelper(
-        nicknameHelper,
-        "닉네임 확인 중 오류가 발생했습니다.",
-        "error"
-      );
-    }
-
-    updateSignupButton();
+    },
   });
 
   // 프로필 이미지
   profileCircle.addEventListener("click", () => {
-    const hasImage =
-      profileCircle.querySelector("img") !== null;
+    const hasImage = profileCircle.querySelector("img") !== null;
     if (hasImage) {
       profileCircle.innerHTML = "<span>+</span>";
       profileImagePath = null;
-      setHelper(
-        profileHelper,
-        "프로필 사진을 추가하세요.",
-        "error"
-      );
+      setHelper(profileHelper, "프로필 사진을 추가하세요.", "error");
       updateSignupButton();
       return;
     }
@@ -594,17 +558,13 @@ function initSignupPage() {
 
   profileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
-    if (!file) {
-      if (!profileImagePath) {
-        setHelper(
-          profileHelper,
-          "프로필 사진을 추가하세요.",
-          "error"
-        );
-      }
+    if (!file && !profileImagePath) {
+      setHelper(profileHelper, "프로필 사진을 추가하세요.", "error");
       return;
     }
+    if (!file) return;
 
+    // 미리보기
     const reader = new FileReader();
     reader.onload = () => {
       profileCircle.innerHTML = "";
@@ -614,47 +574,7 @@ function initSignupPage() {
     };
     reader.readAsDataURL(file);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/image`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (res.status === 201) {
-        const data = await res.json();
-        if (data.data && data.data.file_path) {
-          profileImagePath = data.data.file_path;
-          setHelper(profileHelper, "", "");
-        } else {
-          profileImagePath = null;
-          setHelper(
-            profileHelper,
-            "이미지 업로드 중 오류가 발생했습니다.",
-            "error"
-          );
-        }
-      } else {
-        profileImagePath = null;
-        setHelper(
-          profileHelper,
-          "이미지 업로드 중 오류가 발생했습니다.",
-          "error"
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      profileImagePath = null;
-      setHelper(
-        profileHelper,
-        "이미지 업로드 중 오류가 발생했습니다.",
-        "error"
-      );
-    }
-
+    profileImagePath = await uploadImage(file, profileHelper);
     updateSignupButton();
   });
 
@@ -682,22 +602,11 @@ function initSignupPage() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/user/signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (res.status === 201) {
-        const data = await res.json();
-        if (data.detail === "register_success") {
-          alert("회원가입이 완료되었습니다.");
-          window.location.href = "login.html";
-          return;
-        }
+      const { res, data } = await apiPost("/user/signup", payload);
+      if (res.status === 201 && data.detail === "register_success") {
+        alert("회원가입이 완료되었습니다.");
+        window.location.href = "login.html";
+        return;
       }
 
       alert(
@@ -710,16 +619,14 @@ function initSignupPage() {
   });
 }
 
-// ---------- 게시글 목록 페이지 ----------
+/* ================== 게시글 목록 페이지 ================== */
 
 function initPostsPage() {
   const user = initAuthedPage();
   if (!user) return;
 
   const listEl = document.getElementById("posts-list");
-  const loadingEl = document.getElementById(
-    "posts-loading"
-  );
+  const loadingEl = document.getElementById("posts-loading");
   const writeBtn = document.getElementById("btn-write");
 
   let cursorId = 0;
@@ -728,7 +635,7 @@ function initPostsPage() {
   let hasMore = true;
 
   writeBtn.addEventListener("click", () => {
-    window.location.href = "post_create.html"; // 나중에 만들 페이지
+    window.location.href = "post_create.html";
   });
 
   async function fetchPosts() {
@@ -737,19 +644,12 @@ function initPostsPage() {
     loadingEl.textContent = "불러오는 중...";
 
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/posts?cursor_id=${cursorId}&count=${PAGE_SIZE}`,
-        { method: "GET", credentials: "include" }
-      );
+      const { res, data } = await apiGet("/posts", {
+        query: { cursor_id: cursorId, count: PAGE_SIZE },
+      });
 
-      if (res.status !== 200) {
-        loadingEl.textContent = "";
-        hasMore = false;
-        return;
-      }
-
-      const data = await res.json();
       if (
+        res.status !== 200 ||
         !data.data ||
         !Array.isArray(data.data.post_list)
       ) {
@@ -783,23 +683,12 @@ function initPostsPage() {
         `;
 
         const avatarDiv = card.querySelector(".post-author-avatar");
-        if (avatarDiv) {
-          const imgUrl = post.author_profile_image;
-          const nickname = post.author_nickname || "U";
-
-          if (imgUrl && typeof imgUrl === "string") {
-            // 이미지가 있는 경우: 배경 이미지로 표시
-            avatarDiv.style.backgroundImage = `url(${imgUrl})`;
-            avatarDiv.style.backgroundSize = "cover";
-            avatarDiv.style.backgroundPosition = "center";
-            avatarDiv.style.backgroundRepeat = "no-repeat";
-            avatarDiv.textContent = ""; // 글자 제거
-          } else {
-            // 이미지가 없는 경우: 이니셜 표시
-            avatarDiv.style.backgroundImage = "none";
-            avatarDiv.textContent = nickname.charAt(0).toUpperCase();
-          }
-        }
+        renderAvatar(
+          avatarDiv,
+          post.author_profile_image,
+          post.author_nickname,
+          "post-author-initial"
+        );
 
         card.addEventListener("click", () => {
           window.location.href = `post_detail.html?postId=${post.post_id}`;
@@ -825,72 +714,44 @@ function initPostsPage() {
     }
   }
 
-  // 최초 로드
   fetchPosts();
 
-  // 인피니티 스크롤
   window.addEventListener("scroll", () => {
     if (!hasMore || isLoading) return;
-    const scrollBottom =
-      window.innerHeight + window.scrollY;
+    const scrollBottom = window.innerHeight + window.scrollY;
     if (scrollBottom >= document.body.offsetHeight - 200) {
       fetchPosts();
     }
   });
 }
 
-// ---------- 회원정보 수정 페이지 ----------
+/* ================== 회원정보 수정 페이지 ================== */
 
 function initProfileEditPage() {
   const user = initAuthedPage();
   if (!user) return;
 
-  const emailInput = document.getElementById(
-    "profile-email"
-  );
-  const nicknameInput = document.getElementById(
-    "profile-nickname"
-  );
-  const nicknameHelper = document.getElementById(
-    "profile-nickname-helper"
-  );
-  const updateBtn = document.getElementById(
-    "profile-update-btn"
-  );
+  const emailInput = document.getElementById("profile-email");
+  const nicknameInput = document.getElementById("profile-nickname");
+  const nicknameHelper = document.getElementById("profile-nickname-helper");
+  const updateBtn = document.getElementById("profile-update-btn");
 
-  const profileCircle = document.getElementById(
-    "profile-circle"
-  );
-  const profileInput = document.getElementById(
-    "profile-file-input"
-  );
-  const profileHelper = document.getElementById(
-    "profile-helper"
-  );
+  const profileCircle = document.getElementById("profile-circle");
+  const profileInput = document.getElementById("profile-file-input");
+  const profileHelper = document.getElementById("profile-helper");
 
   const toast = document.getElementById("toast");
-  const toastBtn = document.getElementById(
-    "toast-confirm-btn"
-  );
+  const toastBtn = document.getElementById("toast-confirm-btn");
 
-  const modalBackdrop = document.getElementById(
-    "delete-modal-backdrop"
-  );
-  const modalCancel = document.getElementById(
-    "modal-btn-cancel"
-  );
-  const modalConfirm = document.getElementById(
-    "modal-btn-confirm"
-  );
-  const deleteBtn = document.getElementById(
-    "btn-delete-user"
-  );
+  const modalBackdrop = document.getElementById("delete-modal-backdrop");
+  const modalCancel = document.getElementById("modal-btn-cancel");
+  const modalConfirm = document.getElementById("modal-btn-confirm");
+  const deleteBtn = document.getElementById("btn-delete-user");
 
   let nicknameValid = true;
   let nicknameAvailable = true;
   let profileImagePath = user.profile_image || null;
 
-  // 초기 값 세팅
   emailInput.value = user.email || "";
   nicknameInput.value = user.nickname || "";
 
@@ -902,121 +763,38 @@ function initProfileEditPage() {
     setHelper(profileHelper, "", "");
   } else {
     profileCircle.innerHTML = "<span>+</span>";
-    setHelper(
-      profileHelper,
-      "프로필 사진을 추가하세요.",
-      "error"
-    );
+    setHelper(profileHelper, "프로필 사진을 추가하세요.", "error");
   }
 
   function updateUserButton() {
     const can =
-      nicknameValid && nicknameAvailable && nicknameInput.value.trim();
+      nicknameValid &&
+      nicknameAvailable &&
+      nicknameInput.value.trim().length > 0;
     setButtonActive(updateBtn, !!can);
   }
 
-  // 닉네임 blur 시 유효성 + 중복
-  nicknameInput.addEventListener("blur", async () => {
-    const value = nicknameInput.value.trim();
-    nicknameAvailable = false;
-
-    if (!value) {
-      nicknameValid = false;
-      setHelper(
-        nicknameHelper,
-        "닉네임을 입력해주세요",
-        "error"
-      );
+  // 닉네임 중복 체크
+  bindNicknameCheck({
+    input: nicknameInput,
+    helper: nicknameHelper,
+    initialNickname: user.nickname,
+    onStateChange: ({ valid, available }) => {
+      nicknameValid = valid;
+      nicknameAvailable = available;
       updateUserButton();
-      return;
-    }
-
-    if (!isValidNickname(value)) {
-      nicknameValid = false;
-      setHelper(
-        nicknameHelper,
-        "10자 이내, 띄어쓰기 불가",
-        "error"
-      );
-      updateUserButton();
-      return;
-    }
-
-    nicknameValid = true;
-
-    // 기존 닉네임이면 굳이 중복확인 안 함
-    if (value === user.nickname) {
-      nicknameAvailable = true;
-      setHelper(nicknameHelper, "", "");
-      updateUserButton();
-      return;
-    }
-
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/user/check-nickname?nickname=${encodeURIComponent(
-          value
-        )}`,
-        { method: "GET", credentials: "include" }
-      );
-
-      if (res.status === 200) {
-        const data = await res.json();
-        if (data.data && data.data.possible) {
-          nicknameAvailable = true;
-          setHelper(
-            nicknameHelper,
-            "사용가능한 닉네임입니다.",
-            "success"
-          );
-        } else {
-          nicknameAvailable = false;
-          setHelper(
-            nicknameHelper,
-            "중복된 닉네임입니다.",
-            "error"
-          );
-        }
-      } else if (res.status === 400) {
-        nicknameValid = false;
-        setHelper(
-          nicknameHelper,
-          "10자 이내, 띄어쓰기 불가",
-          "error"
-        );
-      } else {
-        nicknameAvailable = false;
-        setHelper(
-          nicknameHelper,
-          "닉네임 확인 중 오류가 발생했습니다.",
-          "error"
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      nicknameAvailable = false;
-      setHelper(
-        nicknameHelper,
-        "닉네임 확인 중 오류가 발생했습니다.",
-        "error"
-      );
-    }
-
-    updateUserButton();
+    },
   });
 
-  // 프로필 이미지 클릭/업로드
+  nicknameInput.addEventListener("input", updateUserButton);
+
+  // 프로필 이미지
   profileCircle.addEventListener("click", () => {
-    const hasImage =
-      profileCircle.querySelector("img") !== null;
+    const hasImage = profileCircle.querySelector("img") !== null;
     if (hasImage) {
       profileCircle.innerHTML = "<span>+</span>";
       profileImagePath = null;
-      setHelper(
-        profileHelper,
-        "프로필 사진을 추가하세요.",
-        "error"
-      );
+      setHelper(profileHelper, "프로필 사진을 추가하세요.", "error");
       updateUserButton();
       return;
     }
@@ -1025,16 +803,11 @@ function initProfileEditPage() {
 
   profileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
-    if (!file) {
-      if (!profileImagePath) {
-        setHelper(
-          profileHelper,
-          "프로필 사진을 추가하세요.",
-          "error"
-        );
-      }
+    if (!file && !profileImagePath) {
+      setHelper(profileHelper, "프로필 사진을 추가하세요.", "error");
       return;
     }
+    if (!file) return;
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -1045,51 +818,11 @@ function initProfileEditPage() {
     };
     reader.readAsDataURL(file);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/image`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (res.status === 201) {
-        const data = await res.json();
-        if (data.data && data.data.file_path) {
-          profileImagePath = data.data.file_path;
-          setHelper(profileHelper, "", "");
-        } else {
-          profileImagePath = null;
-          setHelper(
-            profileHelper,
-            "이미지 업로드 중 오류가 발생했습니다.",
-            "error"
-          );
-        }
-      } else {
-        profileImagePath = null;
-        setHelper(
-          profileHelper,
-          "이미지 업로드 중 오류가 발생했습니다.",
-          "error"
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      profileImagePath = null;
-      setHelper(
-        profileHelper,
-        "이미지 업로드 중 오류가 발생했습니다.",
-        "error"
-      );
-    }
-
+    profileImagePath = await uploadImage(file, profileHelper);
     updateUserButton();
   });
 
-  // 수정 완료 토스트에서 확인 누르면 목록으로
+  // 수정 완료 토스트 -> 목록
   toastBtn.addEventListener("click", () => {
     toast.classList.add("hidden");
     window.location.href = "posts.html";
@@ -1106,36 +839,20 @@ function initProfileEditPage() {
     };
 
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/user/update-me/${user.user_id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        }
+      const { res, data } = await apiPut(
+        `/user/update-me/${user.user_id}`,
+        payload
       );
-
-      if (res.status === 200) {
-        const data = await res.json();
-        if (data.detail === "profile_update_success") {
-          // 로컬 세션도 업데이트
-          const updated = {
-            ...user,
-            nickname: data.data.nickname,
-            profile_image: data.data.profile_image,
-          };
-          localStorage.setItem(
-            USER_KEY,
-            JSON.stringify(updated)
-          );
-          toast.classList.remove("hidden");
-          return;
-        }
+      if (res.status === 200 && data.detail === "profile_update_success") {
+        const updated = {
+          ...user,
+          nickname: data.data.nickname,
+          profile_image: data.data.profile_image,
+        };
+        localStorage.setItem(USER_KEY, JSON.stringify(updated));
+        toast.classList.remove("hidden");
+        return;
       }
-
       alert("회원정보 수정에 실패했습니다.");
     } catch (err) {
       console.error(err);
@@ -1160,20 +877,12 @@ function initProfileEditPage() {
 
   modalConfirm.addEventListener("click", async () => {
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/user/${user.user_id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
-
+      const { res } = await apiDelete(`/user/${user.user_id}`);
       if (res.status === 200) {
         clearUserSession();
         window.location.href = "login.html";
         return;
       }
-
       alert("회원 탈퇴에 실패했습니다.");
     } catch (err) {
       console.error(err);
@@ -1184,55 +893,38 @@ function initProfileEditPage() {
   updateUserButton();
 }
 
-// ---------- 비밀번호 수정 페이지 ----------
+/* ================== 비밀번호 수정 페이지 ================== */
 
 function initPasswordEditPage() {
   const user = initAuthedPage();
   if (!user) return;
 
-  const currentInput = document.getElementById(
-    "pwd-current"
-  );
+  const currentInput = document.getElementById("pwd-current");
   const newInput = document.getElementById("pwd-new");
-  const confirmInput = document.getElementById(
-    "pwd-confirm"
-  );
+  const confirmInput = document.getElementById("pwd-confirm");
 
-  const currentHelper = document.getElementById(
-    "pwd-current-helper"
-  );
-  const newHelper = document.getElementById(
-    "pwd-new-helper"
-  );
-  const confirmHelper = document.getElementById(
-    "pwd-confirm-helper"
-  );
+  const currentHelper = document.getElementById("pwd-current-helper");
+  const newHelper = document.getElementById("pwd-new-helper");
+  const confirmHelper = document.getElementById("pwd-confirm-helper");
 
-  const updateBtn = document.getElementById(
-    "pwd-update-btn"
-  );
+  const updateBtn = document.getElementById("pwd-update-btn");
 
   let currentValid = false;
   let newValid = false;
   let confirmValid = false;
 
   function updatePasswordState() {
-    const can =
-      currentValid && newValid && confirmValid;
+    const can = currentValid && newValid && confirmValid;
     setButtonActive(updateBtn, can);
   }
 
   currentInput.addEventListener("blur", () => {
     if (!currentInput.value) {
       currentValid = false;
-      setHelper(
-        currentHelper,
-        "비밀번호를 입력해주세요",
-        "error"
-      );
+      setHelper(currentHelper, "비밀번호를 입력해주세요", "error");
     } else {
       currentValid = true;
-      setHelper(currentHelper, "");
+      setHelper(currentHelper, "", "");
     }
     updatePasswordState();
   });
@@ -1241,11 +933,7 @@ function initPasswordEditPage() {
     const v = newInput.value;
     if (!v) {
       newValid = false;
-      setHelper(
-        newHelper,
-        "비밀번호를 입력해주세요",
-        "error"
-      );
+      setHelper(newHelper, "비밀번호를 입력해주세요", "error");
     } else if (!isValidPassword(v)) {
       newValid = false;
       setHelper(
@@ -1255,7 +943,7 @@ function initPasswordEditPage() {
       );
     } else {
       newValid = true;
-      setHelper(newHelper, "");
+      setHelper(newHelper, "", "");
     }
     validateConfirm();
     updatePasswordState();
@@ -1265,23 +953,15 @@ function initPasswordEditPage() {
     const v = confirmInput.value;
     if (!v) {
       confirmValid = false;
-      setHelper(
-        confirmHelper,
-        "비밀번호를 입력해주세요",
-        "error"
-      );
+      setHelper(confirmHelper, "비밀번호를 입력해주세요", "error");
       return;
     }
     if (v !== newInput.value) {
       confirmValid = false;
-      setHelper(
-        confirmHelper,
-        "비밀번호가 다릅니다",
-        "error"
-      );
+      setHelper(confirmHelper, "비밀번호가 다릅니다", "error");
     } else {
       confirmValid = true;
-      setHelper(confirmHelper, "");
+      setHelper(confirmHelper, "", "");
     }
   }
 
@@ -1292,8 +972,7 @@ function initPasswordEditPage() {
 
   updateBtn.addEventListener("click", async (e) => {
     e.preventDefault();
-    if (!(currentValid && newValid && confirmValid))
-      return;
+    if (!(currentValid && newValid && confirmValid)) return;
 
     const payload = {
       current_password: currentInput.value,
@@ -1301,37 +980,24 @@ function initPasswordEditPage() {
     };
 
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/user/update-password/${user.user_id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        }
+      const { res, data } = await apiPut(
+        `/user/update-password/${user.user_id}`,
+        payload
       );
 
-      if (res.status === 200) {
-        const data = await res.json();
-        if (data.detail === "password_update_success") {
-          alert("비밀번호가 변경되었습니다.");
-          window.location.href = "posts.html";
-          return;
-        }
-      } else if (res.status === 400) {
-        const data = await res.json();
-        if (data.detail === "invalid_password") {
-          setHelper(
-            currentHelper,
-            "현재 비밀번호가 올바르지 않습니다.",
-            "error"
-          );
-          currentValid = false;
-          updatePasswordState();
-          return;
-        }
+      if (res.status === 200 && data.detail === "password_update_success") {
+        alert("비밀번호가 변경되었습니다.");
+        window.location.href = "posts.html";
+        return;
+      } else if (res.status === 400 && data.detail === "invalid_password") {
+        setHelper(
+          currentHelper,
+          "현재 비밀번호가 올바르지 않습니다.",
+          "error"
+        );
+        currentValid = false;
+        updatePasswordState();
+        return;
       }
 
       alert("비밀번호 변경에 실패했습니다.");
@@ -1344,8 +1010,7 @@ function initPasswordEditPage() {
   updatePasswordState();
 }
 
-
-// ---------------- 게시글 작성 페이지 ----------------
+/* ================== 게시글 작성 페이지 ================== */
 
 function initCreatePostPage() {
   const user = initAuthedPage();
@@ -1363,12 +1028,9 @@ function initCreatePostPage() {
   let titleFilled = false;
   let contentFilled = false;
 
-  // 뒤로가기 -> 게시글 목록
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      window.location.href = "posts.html";
-    });
-  }
+  backBtn?.addEventListener("click", () => {
+    window.location.href = "posts.html";
+  });
 
   function updateMainHelper() {
     if (!titleFilled || !contentFilled) {
@@ -1380,11 +1042,10 @@ function initCreatePostPage() {
   }
 
   function updateSubmitButton() {
-    const canSubmit =titleFilled && contentFilled;
+    const canSubmit = titleFilled && contentFilled;
     setButtonActive(submitBtn, canSubmit);
   }
 
-  // 제목
   titleInput.addEventListener("input", () => {
     if (titleInput.value.length > 26) {
       titleInput.value = titleInput.value.slice(0, 26);
@@ -1394,68 +1055,22 @@ function initCreatePostPage() {
     updateSubmitButton();
   });
 
-  // 내용
   contentInput.addEventListener("input", () => {
     contentFilled = contentInput.value.trim().length > 0;
     updateMainHelper();
     updateSubmitButton();
   });
 
-  // 이미지 업로드
   imageInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) {
       postImageUrl = null;
-      imageHelper.textContent = "파일을 선택해주세요.";
-      imageHelper.classList.remove("success");
+      setHelper(imageHelper, "파일을 선택해주세요.", "");
       return;
     }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    imageHelper.textContent = "이미지를 업로드 중입니다...";
-    imageHelper.classList.remove("success");
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/image`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (res.status === 201) {
-        const data = await res.json();
-        if (data.data && data.data.file_path) {
-          postImageUrl = data.data.file_path;
-          setHelper(imageHelper, "", "");
-        } else {
-          postImageUrl = null;
-          setHelper(
-            imageHelper,
-            "이미지 업로드 중 오류가 발생했습니다.",
-            "error"
-          );
-        }
-      } else {
-        postImageUrl = null;
-        setHelper(
-          imageHelper,
-          "이미지 업로드 중 오류가 발생했습니다.",
-          "error"
-        );
-      }
-    } catch (err) {
-      postImageUrl = null;
-      setHelper(
-        imageHelper,
-        "이미지 업로드 중 오류가 발생했습니다.",
-        "error"
-      );
-    }
+    postImageUrl = await uploadImage(file, imageHelper);
   });
 
-  // 게시글 등록
   submitBtn.addEventListener("click", async () => {
     if (!titleFilled || !contentFilled) {
       updateMainHelper();
@@ -1470,20 +1085,16 @@ function initCreatePostPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/posts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
+      const { res, data } = await apiPost("/posts", payload);
       if (res.status === 201 && data.detail === "post_create_success") {
         window.location.href = "posts.html";
       } else {
         console.error("post create error:", res.status, data);
-        alert("게시글 등록에 실패했습니다. (" + (data.detail || res.status) + ")");
+        alert(
+          "게시글 등록에 실패했습니다. (" +
+            (data.detail || res.status) +
+            ")"
+        );
       }
     } catch (err) {
       console.error(err);
@@ -1491,14 +1102,14 @@ function initCreatePostPage() {
     }
   });
 
-  // 초기 상태 세팅
   titleFilled = false;
   contentFilled = false;
   updateMainHelper();
   updateSubmitButton();
 }
 
-// ---------- 게시글 수정 페이지 ----------
+/* ================== 게시글 수정 페이지 ================== */
+
 async function initPostEditPage() {
   const user = initAuthedPage();
   if (!user) return;
@@ -1520,7 +1131,6 @@ async function initPostEditPage() {
   const currentImageRow = document.getElementById("current-image-row");
   const currentImageLabel = document.getElementById("current-image-label");
   const deleteImageBtn = document.getElementById("delete-image-btn");
-
   const submitBtn = document.getElementById("edit-submit-btn");
 
   backBtn.addEventListener("click", () => {
@@ -1541,7 +1151,7 @@ async function initPostEditPage() {
   }
 
   function updateSubmitButton() {
-    const canSubmit =titleFilled && contentFilled;
+    const canSubmit = titleFilled && contentFilled;
     setButtonActive(submitBtn, canSubmit);
   }
 
@@ -1561,33 +1171,23 @@ async function initPostEditPage() {
   });
 
   deleteImageBtn.addEventListener("click", () => {
-    // 서버에 보낼 이미지 경로 제거
     imageUrl = null;
-
-    // UI 전환: 삭제 영역 숨기고 파일 선택 다시 노출
     currentImageRow.style.display = "none";
     fileRow.style.display = "block";
-
-    // file input 초기화 + helper 문구
     imageInput.value = "";
-    imageHelper.textContent = "파일을 선택해주세요.";
+    setHelper(imageHelper, "파일을 선택해주세요.", "");
   });
 
-
-  // 기존 게시글 정보 가져오기
   async function fetchPost() {
     try {
-      const res = await fetch(`${API_BASE_URL}/posts/${postId}`, {
-        method: "GET",
-        credentials: "include",
-      });
-      const data = await res.json();
+      const { res, data } = await apiGet(`/posts/${postId}`);
       if (res.status !== 200 || data.detail !== "post_detail_success") {
         alert("게시글 정보를 불러오지 못했습니다.");
         window.location.href = "posts.html";
         return;
       }
       const post = data.data;
+
       titleInput.value = post.title;
       contentInput.value = post.content;
       imageUrl = post.image_url || null;
@@ -1596,17 +1196,16 @@ async function initPostEditPage() {
       contentFilled = !!post.content;
       updateMainHelper();
       updateSubmitButton();
+
       if (imageUrl) {
-        // 기존 이미지가 있는 경우: 삭제 버튼 + 현재 이미지 텍스트만 보이게
         currentImageLabel.textContent = `현재 등록된 이미지: ${imageUrl}`;
         currentImageRow.style.display = "flex";
-        fileRow.style.display = "none";          // 파일 선택 버튼 숨김
-        imageHelper.textContent = "";            // helper는 일단 비워두기
+        fileRow.style.display = "none";
+        setHelper(imageHelper, "", "");
       } else {
-        // 기존 이미지가 없는 경우: 파일 선택 버튼만 보이게
         currentImageRow.style.display = "none";
         fileRow.style.display = "block";
-        imageHelper.textContent = "파일을 선택해주세요.";
+        setHelper(imageHelper, "파일을 선택해주세요.", "");
       }
     } catch (err) {
       console.error(err);
@@ -1615,61 +1214,18 @@ async function initPostEditPage() {
     }
   }
 
-  // 이미지 업로드 (변경)
   imageInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) {
-      // 파일 다시 선택 취소한 경우
       if (!imageUrl) {
-        imageHelper.textContent = "파일을 선택해주세요.";
+        setHelper(imageHelper, "파일을 선택해주세요.", "");
       }
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    imageHelper.textContent = "이미지를 업로드 중입니다...";
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/image`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (res.status === 201) {
-        const data = await res.json();
-        if (data.data && data.data.file_path) {
-          imageUrl = data.data.file_path;
-          imageHelper.textContent = ""; 
-        } else {
-          imageUrl = null;
-          setHelper(
-            imageHelper,
-            "이미지 업로드 중 오류가 발생했습니다.",
-            "error"
-          );
-        }
-      } else {
-        imageUrl = null;
-        setHelper(
-          imageHelper,
-          "이미지 업로드 중 오류가 발생했습니다.",
-          "error"
-        );
-      }
-    } catch (err) {
-      imageUrl = null;
-      setHelper(
-        imageHelper,
-        "이미지 업로드 중 오류가 발생했습니다.",
-        "error"
-      );
-    }
+    imageUrl = await uploadImage(file, imageHelper);
   });
 
-  // 수정하기
   submitBtn.addEventListener("click", async () => {
     if (!titleFilled || !contentFilled) {
       updateMainHelper();
@@ -1684,17 +1240,15 @@ async function initPostEditPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/posts/${postId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      const { res, data } = await apiPut(`/posts/${postId}`, payload);
       if (res.status === 200 && data.detail === "post_update_success") {
         window.location.href = `post_detail.html?postId=${postId}`;
       } else {
-        alert("게시글 수정에 실패했습니다. (" + (data.detail || res.status) + ")");
+        alert(
+          "게시글 수정에 실패했습니다. (" +
+            (data.detail || res.status) +
+            ")"
+        );
       }
     } catch (err) {
       console.error(err);
@@ -1705,7 +1259,8 @@ async function initPostEditPage() {
   await fetchPost();
 }
 
-// ---------- 게시글 상세조회 페이지 ----------
+/* ================== 게시글 상세 페이지 ================== */
+
 async function initPostDetailPage() {
   const user = initAuthedPage();
   if (!user) return;
@@ -1743,49 +1298,38 @@ async function initPostDetailPage() {
   const commentSubmitBtn = document.getElementById("comment-submit-btn");
   const commentsList = document.getElementById("comments-list");
 
-  // 댓글 삭제 모달
   const commentDeleteModal = document.getElementById("comment-delete-modal");
-  const commentDeleteCancel = document.getElementById("comment-delete-cancel");
-  const commentDeleteConfirm = document.getElementById("comment-delete-confirm");
+  const commentDeleteCancel = document.getElementById(
+    "comment-delete-cancel"
+  );
+  const commentDeleteConfirm = document.getElementById(
+    "comment-delete-confirm"
+  );
 
   let liked = false;
   let likeId = null;
   let likeCount = 0;
   let totalCommentCount = 0;
 
-  let editingCommentId = null; // null이면 새 댓글 모드
+  let editingCommentId = null;
   let pendingDeleteCommentId = null;
 
   function updateLikeUI() {
     likeCountEl.textContent = formatCount(likeCount);
-    if (liked) {
-      likePill.classList.add("liked");
-    } else {
-      likePill.classList.remove("liked");
-    }
+    if (liked) likePill.classList.add("liked");
+    else likePill.classList.remove("liked");
   }
 
   function updateCommentButtonState() {
     const hasText = commentTextarea.value.trim().length > 0;
-    if (hasText) {
-      commentSubmitBtn.classList.add("active");
-      commentSubmitBtn.disabled = false;
-    } else {
-      commentSubmitBtn.classList.remove("active");
-      commentSubmitBtn.disabled = true;
-    }
+    setButtonActive(commentSubmitBtn, hasText);
   }
 
   commentTextarea.addEventListener("input", updateCommentButtonState);
 
-  // 상세 조회 API 호출
   async function fetchPostDetail() {
     try {
-      const res = await fetch(`${API_BASE_URL}/posts/${postId}`, {
-        method: "GET",
-        credentials: "include",
-      });
-      const data = await res.json();
+      const { res, data } = await apiGet(`/posts/${postId}`);
       if (res.status !== 200 || data.detail !== "post_detail_success") {
         console.error("detail error:", res.status, data);
         alert("게시글을 불러오지 못했습니다.");
@@ -1797,7 +1341,7 @@ async function initPostDetailPage() {
 
       titleEl.textContent = post.title;
       authorEl.textContent = post.author_nickname;
-      dateEl.textContent = post.created_at; // 서버 포맷 그대로 사용
+      dateEl.textContent = post.created_at;
       contentEl.textContent = post.content;
 
       if (post.image_url) {
@@ -1816,14 +1360,12 @@ async function initPostDetailPage() {
       viewCountEl.textContent = formatCount(post.views || 0);
       commentCountEl.textContent = formatCount(totalCommentCount);
 
-      // 작성자 본인인 경우 수정/삭제 버튼 보여주기
       if (Number(post.author_user_id) === Number(user.user_id)) {
         ownerActions.style.display = "flex";
       } else {
         ownerActions.style.display = "none";
       }
 
-      // 댓글 렌더링
       renderComments(post.comments || []);
     } catch (err) {
       console.error(err);
@@ -1841,18 +1383,12 @@ async function initPostDetailPage() {
 
       const avatar = document.createElement("div");
       avatar.className = "comment-avatar";
-
-      if (c.author_profile_image) {
-        const img = document.createElement("img");
-        img.src = c.author_profile_image;
-        img.alt = c.author_nickname || "author";
-        avatar.appendChild(img);
-      } else {
-        const span = document.createElement("span");
-        span.className = "comment-avatar-initial";
-        span.textContent = (c.author_nickname?.[0] || "U").toUpperCase();
-        avatar.appendChild(span);
-      }
+      renderAvatar(
+        avatar,
+        c.author_profile_image,
+        c.author_nickname,
+        "comment-avatar-initial"
+      );
 
       const body = document.createElement("div");
       body.className = "comment-body";
@@ -1883,7 +1419,6 @@ async function initPostDetailPage() {
       body.appendChild(headerRow);
       body.appendChild(content);
 
-      // 내 댓글이면 수정/삭제 버튼
       if (Number(c.user_id) === Number(user.user_id)) {
         const actionsRow = document.createElement("div");
         actionsRow.className = "comment-actions-row";
@@ -1921,16 +1456,10 @@ async function initPostDetailPage() {
   likePill.addEventListener("click", async () => {
     try {
       if (!liked) {
-        const res = await fetch(`${API_BASE_URL}/like`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            post_id: Number(postId),
-            user_id: user.user_id,
-          }),
+        const { res, data } = await apiPost("/like", {
+          post_id: Number(postId),
+          user_id: user.user_id,
         });
-        const data = await res.json();
         if (res.status === 201 && data.detail === "like_create_success") {
           liked = true;
           likeId = data.data.like_id;
@@ -1941,11 +1470,7 @@ async function initPostDetailPage() {
         }
       } else {
         if (!likeId) return;
-        const res = await fetch(`${API_BASE_URL}/like/${likeId}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-        const data = await res.json();
+        const { res, data } = await apiDelete(`/like/${likeId}`);
         if (res.status === 200 && data.detail === "like_delete_success") {
           liked = false;
           likeId = null;
@@ -1961,7 +1486,7 @@ async function initPostDetailPage() {
     }
   });
 
-  // 댓글 등록 / 수정
+  // 댓글 등록/수정
   commentSubmitBtn.addEventListener("click", async () => {
     const text = commentTextarea.value.trim();
     if (!text) {
@@ -1972,40 +1497,34 @@ async function initPostDetailPage() {
     try {
       if (editingCommentId == null) {
         // 새 댓글
-        const res = await fetch(`${API_BASE_URL}/comment`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            post_id: Number(postId),
-            user_id: user.user_id,
-            content: text,
-          }),
+        const { res, data } = await apiPost("/comment", {
+          post_id: Number(postId),
+          user_id: user.user_id,
+          content: text,
         });
-        const data = await res.json();
-        if (res.status === 201 && data.detail === "comment_create_success") {
+        if (
+          res.status === 201 &&
+          data.detail === "comment_create_success"
+        ) {
           commentTextarea.value = "";
           commentSubmitBtn.textContent = "댓글 등록";
           editingCommentId = null;
           totalCommentCount += 1;
           commentCountEl.textContent = formatCount(totalCommentCount);
-          await fetchPostDetail(); // 새로고침
+          await fetchPostDetail();
         } else {
           alert("댓글 등록에 실패했습니다.");
         }
       } else {
-        // 댓글 수정
-        const res = await fetch(
-          `${API_BASE_URL}/comment/${editingCommentId}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ content: text }),
-          }
+        // 수정
+        const { res, data } = await apiPut(
+          `/comment/${editingCommentId}`,
+          { content: text }
         );
-        const data = await res.json();
-        if (res.status === 200 && data.detail === "comment_update_success") {
+        if (
+          res.status === 200 &&
+          data.detail === "comment_update_success"
+        ) {
           commentTextarea.value = "";
           commentSubmitBtn.textContent = "댓글 등록";
           editingCommentId = null;
@@ -2028,18 +1547,17 @@ async function initPostDetailPage() {
     document.body.style.overflow = "";
     pendingDeleteCommentId = null;
   });
+
   commentDeleteConfirm.addEventListener("click", async () => {
     if (!pendingDeleteCommentId) return;
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/comment/${pendingDeleteCommentId}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
+      const { res, data } = await apiDelete(
+        `/comment/${pendingDeleteCommentId}`
       );
-      const data = await res.json();
-      if (res.status === 200 && data.detail === "comment_delete_success") {
+      if (
+        res.status === 200 &&
+        data.detail === "comment_delete_success"
+      ) {
         totalCommentCount = Math.max(0, totalCommentCount - 1);
         commentCountEl.textContent = formatCount(totalCommentCount);
         await fetchPostDetail();
@@ -2056,7 +1574,7 @@ async function initPostDetailPage() {
     }
   });
 
-  // 게시글 수정 버튼
+  // 게시글 수정
   editBtn.addEventListener("click", () => {
     window.location.href = `post_edit.html?postId=${postId}`;
   });
@@ -2072,11 +1590,7 @@ async function initPostDetailPage() {
   });
   deleteConfirm.addEventListener("click", async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/posts/${postId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const data = await res.json();
+      const { res, data } = await apiDelete(`/posts/${postId}`);
       if (res.status === 200 && data.detail === "post_delete_success") {
         window.location.href = "posts.html";
       } else {
@@ -2091,13 +1605,12 @@ async function initPostDetailPage() {
     }
   });
 
-  // 초기화
   commentSubmitBtn.disabled = true;
   await fetchPostDetail();
   updateCommentButtonState();
 }
 
-// ---------- 페이지별 초기화 ----------
+/* ================== 페이지별 초기화 ================== */
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
