@@ -7,6 +7,12 @@ FastAPI 백엔드의 REST API를 호출하여 로그인, 게시글 목록 조회
 
 프레임워크를 사용하지 않고 상호작용을 직접 구현했기 때문에 DOM 제어, fetch 통신, 유효성 검사 로직 등이 명확하게 표현되어 있습니다.
 
+---
+
+# **시연영상**
+
+https://drive.google.com/file/d/16yCrMHfZRHSoyG99GfKu6IIlS5KXJN1I/view?usp=sharing 
+
 <img width="1122" height="789" alt="Image" src="https://github.com/user-attachments/assets/8ced7c70-4bb7-4f61-88c7-75c8e21bf104" />
 
 ---
